@@ -18,12 +18,12 @@ public class HelloWorld {
                 (name, classPayload) -> cl.add(name, classPayload),
                 V1_8,
                 "SayHelloImpl",
-                method-> (args -> IntStream.range(0, args.size()).mapToObj(i->args.getString(i)).collect(Collectors.joining(" "))),
+                method-> (args -> args.getString(0) + " says " + IntStream.range(1, args.size()).mapToObj(i->args.getString(i)).collect(Collectors.joining(" "))),
                 SayHello.class
         );
         Class loadedClass = cl.loadClass("SayHelloImpl");
 
-        SayHello h = (SayHello) loadedClass.getConstructor().newInstance();
+        SayHello h = (SayHello) loadedClass.getConstructor(Object.class).newInstance(new Object[]{"powerdancer"});
         System.out.println(h.hello("hello", "world"));
         System.out.println(h.hello("hola"));
     }

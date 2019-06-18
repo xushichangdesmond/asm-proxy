@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -54,10 +55,15 @@ public interface InterfaceUtils {
 
         w.visitInnerClass("powerdancer/asmproxy/InterfaceUtils$Arguments", "powerdancer/asmproxy/InterfaceUtils", "Arguments", ACC_PUBLIC | ACC_STATIC | ACC_ABSTRACT | ACC_INTERFACE);
 
+        {
+            FieldVisitor fieldVisitor = w.visitField(ACC_FINAL | ACC_SYNTHETIC, "constructorArg", Type.getDescriptor(Object.class), null, null);
+            fieldVisitor.visitEnd();
+        }
+
         MethodVisitor mv = w.visitMethod(
                 ACC_PUBLIC,
                 "<init>",
-                "()V",
+                Type.getMethodDescriptor(Type.VOID_TYPE, Type.getType(Object.class)),
                 null,
                 null
         );
@@ -66,11 +72,14 @@ public interface InterfaceUtils {
         mv.visitLabel(labelA);
         mv.visitVarInsn(ALOAD, 0);
         mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(Object.class), "<init>", "()V", false);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitFieldInsn(PUTFIELD, name, "constructorArg", Type.getDescriptor(Object.class));
         mv.visitInsn(RETURN);
         Label labelB = new Label();
         mv.visitLabel(labelB);
         mv.visitLocalVariable("this","L" + name + ";", null, labelA, labelB, 0);
-        mv.visitMaxs(1, 1);
+        mv.visitMaxs(2, 1);
         mv.visitEnd();
 
 
@@ -78,6 +87,7 @@ public interface InterfaceUtils {
                 .flatMap(
                         c-> Arrays.stream(c.getMethods())
                 )
+                .filter(Predicate.not(Method::isDefault))
                 .forEach(method->{
                     int funcIndex = funcCount.incrementAndGet();
 
@@ -92,7 +102,11 @@ public interface InterfaceUtils {
 
                     subClassWriter.visitInnerClass(Type.getInternalName(Arguments.class), Type.getInternalName(InterfaceUtils.class), "Arguments", ACC_PUBLIC | ACC_STATIC | ACC_ABSTRACT | ACC_INTERFACE);
 
-                    Class<?>[] argTypes = method.getParameterTypes();
+                    Class<?>[] argTypes = Stream.concat(
+                            Stream.of(Object.class),
+                            Arrays.stream(method.getParameterTypes())
+                    ).toArray(Class[]::new);
+
                     for (int i = 0; i < argTypes.length; i++) {
                         FieldVisitor fieldVisitor = subClassWriter.visitField(ACC_FINAL | ACC_SYNTHETIC, "val$arg" + i, Type.getDescriptor(argTypes[i]), null, null);
                         fieldVisitor.visitEnd();
@@ -186,13 +200,60 @@ public interface InterfaceUtils {
                     methodVisitor.visitTypeInsn(NEW, name + "$" + funcIndex);
                     methodVisitor.visitInsn(DUP);
                     methodVisitor.visitVarInsn(ALOAD, 0);
-                    for (int i = 0; i < argTypes.length; i++) {
-                        methodVisitor.visitVarInsn(ALOAD, i + 1);
+                    methodVisitor.visitInsn(DUP);
+                    methodVisitor.visitFieldInsn(GETFIELD, name, "constructorArg", Type.getDescriptor(Object.class));
+                    for (int i = 1; i < argTypes.length; i++) {
+                        methodVisitor.visitVarInsn(ALOAD, i);
                     }
                     methodVisitor.visitMethodInsn(INVOKESPECIAL, name + "$" + funcIndex, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Stream.concat(Stream.of(Type.getType("L" + name + ";")), Arrays.stream(argTypes).map(Type::getType)).toArray(Type[]::new)), false);
                     methodVisitor.visitMethodInsn(INVOKEINTERFACE, Type.getInternalName(MethodImpl.class), "execute", Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(Arguments.class)), true);
-                    methodVisitor.visitTypeInsn(CHECKCAST, Type.getReturnType(method).getInternalName());
-                    methodVisitor.visitInsn(ARETURN);
+
+                    switch (Type.getReturnType(method).getSort()) {
+                        case Type.BOOLEAN:
+                            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
+                            methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
+                            methodVisitor.visitInsn(IRETURN);
+                            break;
+                        case Type.BYTE:
+                            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Byte");
+                            methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Byte", "byteValue", "()B", false);
+                            methodVisitor.visitInsn(IRETURN);
+                            break;
+                        case Type.CHAR:
+                            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Character");
+                            methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Character", "charValue", "()C", false);
+                            methodVisitor.visitInsn(IRETURN);
+                            break;
+                        case Type.SHORT:
+                            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Short");
+                            methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Short", "shortValue", "()S", false);
+                            methodVisitor.visitInsn(IRETURN);
+                            break;
+                        case Type.INT:
+                            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Integer");
+                            methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Integer", "intValue", "()I", false);
+                            methodVisitor.visitInsn(IRETURN);
+                            break;
+                        case Type.FLOAT:
+                            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Float");
+                            methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Float", "floatValue", "()F", false);
+                            methodVisitor.visitInsn(FRETURN);
+                            break;
+                        case Type.LONG:
+                            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Long");
+                            methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Long", "longValue", "()J", false);
+                            methodVisitor.visitInsn(LRETURN);
+                            break;
+                        case Type.DOUBLE:
+                            methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Double");
+                            methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Double", "doubleValue", "()D", false);
+                            methodVisitor.visitInsn(DRETURN);
+                            break;
+                        default:
+                            methodVisitor.visitTypeInsn(CHECKCAST, Type.getReturnType(method).getInternalName());
+                            methodVisitor.visitInsn(ARETURN);
+                            break;
+                    }
                     Label label1 = new Label();
                     methodVisitor.visitLabel(label1);
                     methodVisitor.visitLocalVariable("this", "L" + name + ";", null, label0, label1, 0);
