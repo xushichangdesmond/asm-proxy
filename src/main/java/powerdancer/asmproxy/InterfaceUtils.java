@@ -87,7 +87,7 @@ public interface InterfaceUtils {
                 .flatMap(
                         c-> Arrays.stream(c.getMethods())
                 )
-                .filter(Predicate.not(Method::isDefault))
+                .filter(method-> !method.isDefault())
                 .forEach(method->{
                     int funcIndex = funcCount.incrementAndGet();
 
