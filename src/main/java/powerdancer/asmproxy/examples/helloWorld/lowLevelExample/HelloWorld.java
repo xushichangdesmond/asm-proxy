@@ -1,6 +1,6 @@
-package powerdancer.asmproxy.examples.helloworld;
+package powerdancer.asmproxy.examples.helloWorld.lowLevelExample;
 
-import powerdancer.asmproxy.InterfaceUtils;
+import powerdancer.asmproxy.AsmProxy;
 import powerdancer.asmproxy.MapClassLoader;
 
 
@@ -14,11 +14,11 @@ public class HelloWorld {
     public static void main(String[] startUpArgs) throws Throwable {
 
         MapClassLoader cl = new MapClassLoader(ClassLoader.getSystemClassLoader());
-        InterfaceUtils.generateImplClass(
-                (name, classPayload) -> cl.add(name, classPayload),
+        AsmProxy.generateImplClass(
+                (name, classPayload) -> cl.addClass(name, classPayload),
                 V1_8,
                 "SayHelloImpl",
-                method-> (args -> args.getString(0) + " says " + IntStream.range(1, args.size()).mapToObj(i->args.getString(i)).collect(Collectors.joining(" "))),
+                method-> (args -> args.getString(0) + " says " + IntStream.range(0, args.size()).mapToObj(i->args.getString(i)).collect(Collectors.joining(" "))),
                 SayHello.class
         );
         Class loadedClass = cl.loadClass("SayHelloImpl");

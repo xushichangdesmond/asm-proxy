@@ -1,6 +1,9 @@
-package powerdancer.asmproxy;
+package powerdancer.asmproxy.internal;
 
 import org.objectweb.asm.*;
+import powerdancer.asmproxy.Arguments;
+import powerdancer.asmproxy.GenerationOps;
+import powerdancer.asmproxy.MethodImpl;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -8,7 +11,6 @@ import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.Map;
-import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -17,26 +19,7 @@ import static org.objectweb.asm.Opcodes.*;
 
 public interface InterfaceUtils {
 
-    interface Arguments {
-        <T> T get(int index, Class<T> klass);
-        int size();
-
-        default String getString(int index) {
-            return get(index, String.class);
-        }
-    }
-
-    @FunctionalInterface
-    interface MethodImpl {
-        Object execute(Arguments args);
-    }
-
-    @FunctionalInterface
-    interface GenerationOps {
-        Class addClass(String name, byte[] classPayload);
-    }
-
-    static void generateImplClass(GenerationOps ops, int version, String name, Function<Method, MethodImpl> implProvider, Class... interfaceClasses) {
+    static <S> Class generateImplClass(GenerationOps ops, int version, String name, Function<Method, MethodImpl<S>> implProvider, Class... interfaceClasses) {
         Map<Integer, MethodImpl> toBootstrap = new HashMap<>();
         AtomicInteger funcCount = new AtomicInteger(0);
 
@@ -103,7 +86,7 @@ public interface InterfaceUtils {
                     subClassWriter.visitInnerClass(Type.getInternalName(Arguments.class), Type.getInternalName(InterfaceUtils.class), "Arguments", ACC_PUBLIC | ACC_STATIC | ACC_ABSTRACT | ACC_INTERFACE);
 
                     Class<?>[] argTypes = Stream.concat(
-                            Stream.of(Object.class),
+                            Stream.of(Object.class, Object.class),
                             Arrays.stream(method.getParameterTypes())
                     ).toArray(Class[]::new);
 
@@ -132,7 +115,34 @@ public interface InterfaceUtils {
 
                         for (int i = 0; i < argTypes.length; i++) {
                             methodVisitor.visitVarInsn(ALOAD, 0);
-                            methodVisitor.visitVarInsn(ALOAD, 2 + i);
+                            switch (Type.getType(argTypes[i]).getSort()) {
+                                case Type.BOOLEAN:
+                                    methodVisitor.visitVarInsn(ILOAD, 2 + i);
+                                    break;
+                                case Type.BYTE:
+                                    methodVisitor.visitVarInsn(ILOAD, 2 + i);
+                                    break;
+                                case Type.CHAR:
+                                    methodVisitor.visitVarInsn(ILOAD, 2 + i);
+                                    break;
+                                case Type.SHORT:
+                                    methodVisitor.visitVarInsn(ILOAD, 2 + i);
+                                    break;
+                                case Type.INT:
+                                    methodVisitor.visitVarInsn(ILOAD, 2 + i);
+                                    break;
+                                case Type.FLOAT:
+                                    methodVisitor.visitVarInsn(FLOAD, 2 + i);
+                                    break;
+                                case Type.LONG:
+                                    methodVisitor.visitVarInsn(LLOAD, 2 + i);
+                                    break;
+                                case Type.DOUBLE:
+                                    methodVisitor.visitVarInsn(DLOAD, 2 + i);
+                                    break;
+                                default:
+                                    methodVisitor.visitVarInsn(ALOAD, 2 + i);
+                            }
                             methodVisitor.visitFieldInsn(PUTFIELD, name + "$" + funcIndex, "val$arg" + i, Type.getDescriptor(argTypes[i]));
                         }
                         methodVisitor.visitInsn(RETURN);
@@ -144,7 +154,7 @@ public interface InterfaceUtils {
                         methodVisitor.visitEnd();
                     }
                     {
-                        MethodVisitor methodVisitor = subClassWriter.visitMethod(ACC_PUBLIC, "get", "(ILjava/lang/Class;)Ljava/lang/Object;", "<T:Ljava/lang/Object;>(ILjava/lang/Class<TT;>;)TT;", null);
+                        MethodVisitor methodVisitor = subClassWriter.visitMethod(ACC_PUBLIC, "internal_get", "(ILjava/lang/Class;)Ljava/lang/Object;", "<T:Ljava/lang/Object;>(ILjava/lang/Class<TT;>;)TT;", null);
                         methodVisitor.visitCode();
                         Label[] labels = new Label[argTypes.length + 2];
                         labels[0]= new Label();
@@ -160,6 +170,33 @@ public interface InterfaceUtils {
                             methodVisitor.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
                             methodVisitor.visitVarInsn(ALOAD, 0);
                             methodVisitor.visitFieldInsn(GETFIELD, name + "$" + funcIndex, "val$arg" + i, Type.getDescriptor(argTypes[i]));
+                            switch (Type.getType(argTypes[i]).getSort()) {
+                                case Type.BOOLEAN:
+                                    methodVisitor.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", Type.getMethodDescriptor(Type.getType(Boolean.class), Type.BOOLEAN_TYPE), false);
+                                    break;
+                                case Type.BYTE:
+                                    methodVisitor.visitMethodInsn(INVOKESTATIC, "java/lang/Byte", "valueOf", Type.getMethodDescriptor(Type.getType(Byte.class), Type.BYTE_TYPE), false);
+                                    break;
+                                case Type.CHAR:
+                                    methodVisitor.visitMethodInsn(INVOKESTATIC, "java/lang/Char", "valueOf", Type.getMethodDescriptor(Type.getType(Character.class), Type.CHAR_TYPE), false);
+                                    break;
+                                case Type.SHORT:
+                                    methodVisitor.visitMethodInsn(INVOKESTATIC, "java/lang/Short", "valueOf", Type.getMethodDescriptor(Type.getType(Short.class), Type.SHORT_TYPE), false);
+                                    break;
+                                case Type.INT:
+                                    methodVisitor.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", Type.getMethodDescriptor(Type.getType(Integer.class), Type.INT_TYPE), false);
+                                    break;
+                                case Type.FLOAT:
+                                    methodVisitor.visitMethodInsn(INVOKESTATIC, "java/lang/Float", "valueOf", Type.getMethodDescriptor(Type.getType(Float.class), Type.FLOAT_TYPE), false);
+                                    break;
+                                case Type.LONG:
+                                    methodVisitor.visitMethodInsn(INVOKESTATIC, "java/lang/Long", "valueOf", Type.getMethodDescriptor(Type.getType(Long.class), Type.LONG_TYPE), false);
+                                    break;
+                                case Type.DOUBLE:
+                                    methodVisitor.visitMethodInsn(INVOKESTATIC, "java/lang/Double", "valueOf", Type.getMethodDescriptor(Type.getType(Double.class), Type.DOUBLE_TYPE), false);
+                                    break;
+                                default:
+                            }
                             methodVisitor.visitInsn(ARETURN);
                         }
                         methodVisitor.visitLabel(labels[argTypes.length + 1]);
@@ -179,6 +216,8 @@ public interface InterfaceUtils {
                         methodVisitor.visitCode();
 
                         methodVisitor.visitLdcInsn(argTypes.length);
+                        methodVisitor.visitInsn(ICONST_2);
+                        methodVisitor.visitInsn(ISUB);
                         methodVisitor.visitInsn(IRETURN);
                         methodVisitor.visitMaxs(1, 0);
                         methodVisitor.visitEnd();
@@ -201,14 +240,44 @@ public interface InterfaceUtils {
                     methodVisitor.visitInsn(DUP);
                     methodVisitor.visitVarInsn(ALOAD, 0);
                     methodVisitor.visitInsn(DUP);
+                    methodVisitor.visitInsn(DUP);
                     methodVisitor.visitFieldInsn(GETFIELD, name, "constructorArg", Type.getDescriptor(Object.class));
-                    for (int i = 1; i < argTypes.length; i++) {
-                        methodVisitor.visitVarInsn(ALOAD, i);
+                    for (int i = 2; i < argTypes.length; i++) {
+                        switch (Type.getType(argTypes[i]).getSort()) {
+                            case Type.BOOLEAN:
+                                methodVisitor.visitVarInsn(ILOAD, i - 1);
+                                break;
+                            case Type.BYTE:
+                                methodVisitor.visitVarInsn(ILOAD, i - 1);
+                                break;
+                            case Type.CHAR:
+                                methodVisitor.visitVarInsn(ILOAD, i - 1);
+                                break;
+                            case Type.SHORT:
+                                methodVisitor.visitVarInsn(ILOAD, i - 1);
+                                break;
+                            case Type.INT:
+                                methodVisitor.visitVarInsn(ILOAD, i - 1);
+                                break;
+                            case Type.FLOAT:
+                                methodVisitor.visitVarInsn(FLOAD, i - 1);
+                                break;
+                            case Type.LONG:
+                                methodVisitor.visitVarInsn(LLOAD, i - 1);
+                                break;
+                            case Type.DOUBLE:
+                                methodVisitor.visitVarInsn(DLOAD, i - 1);
+                                break;
+                            default:
+                                methodVisitor.visitVarInsn(ALOAD, i - 1);
+                        }
                     }
                     methodVisitor.visitMethodInsn(INVOKESPECIAL, name + "$" + funcIndex, "<init>", Type.getMethodDescriptor(Type.VOID_TYPE, Stream.concat(Stream.of(Type.getType("L" + name + ";")), Arrays.stream(argTypes).map(Type::getType)).toArray(Type[]::new)), false);
                     methodVisitor.visitMethodInsn(INVOKEINTERFACE, Type.getInternalName(MethodImpl.class), "execute", Type.getMethodDescriptor(Type.getType(Object.class), Type.getType(Arguments.class)), true);
 
                     switch (Type.getReturnType(method).getSort()) {
+                        case Type.VOID:
+                            methodVisitor.visitInsn(RETURN);
                         case Type.BOOLEAN:
                             methodVisitor.visitTypeInsn(CHECKCAST, "java/lang/Boolean");
                             methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Boolean", "booleanValue", "()Z", false);
@@ -276,6 +345,7 @@ public interface InterfaceUtils {
                     }
                 }
         );
+        return generated;
     }
 
 }
