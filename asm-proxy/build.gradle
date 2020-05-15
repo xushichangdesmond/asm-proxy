@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+    id 'org.javamodularity.moduleplugin' version '1.6.0'
+    id 'maven-publish'
+}
+
+group 'powerdancer.asmproxy'
+version '3.0'
+
+modularity.mixedJavaRelease 8
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation group: 'org.ow2.asm', name: 'asm', version: '8.0.1'
+    implementation group: 'org.ow2.asm', name: 'asm-util', version: '8.0.1'
+
+    implementation "org.slf4j:slf4j-api:1.7.30"
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+}

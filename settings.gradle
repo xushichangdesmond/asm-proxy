@@ -1,2 +1,4 @@
-rootProject.name = 'asm-proxy'
+rootProject.name = 'asmProxy'
+include 'asm-proxy'
+include 'asm-proxy-examples'
 

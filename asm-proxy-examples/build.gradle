@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+    id 'org.javamodularity.moduleplugin' version '1.6.0'
+}
+
+group 'powerdancer.asmproxy'
+version 'X'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation "powerdancer.asmproxy:asm-proxy:3.0"
+
+    runtime "org.slf4j:slf4j-simple:1.7.30"
+}
