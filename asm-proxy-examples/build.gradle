@@ -9,6 +9,7 @@ version 'X'
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {url 'https://xushichangdesmond.github.io/mavenRepo'}
 }
 
 dependencies {
